@@ -42,3 +42,6 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Local protoc compiler
+chargeback-risk-engine/protoc/
