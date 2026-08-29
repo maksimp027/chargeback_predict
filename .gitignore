@@ -37,6 +37,9 @@ Thumbs.db
 *.pt
 *.pth
 *.h5
+!chargeback-risk-engine/model_artifacts/
+!chargeback-risk-engine/model_artifacts/*
+
 
 # Python cache
 __pycache__/
