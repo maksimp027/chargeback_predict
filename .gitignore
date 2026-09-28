@@ -37,8 +37,8 @@ Thumbs.db
 *.pt
 *.pth
 *.h5
-!chargeback-risk-engine/model_artifacts/
-!chargeback-risk-engine/model_artifacts/*
+!model_artifacts/
+!model_artifacts/*
 
 
 # Python cache
@@ -47,4 +47,6 @@ __pycache__/
 *$py.class
 
 # Local protoc compiler
-chargeback-risk-engine/protoc/
+protoc/
+libonnxruntime.so*
+bin/

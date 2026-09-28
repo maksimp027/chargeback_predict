@@ -47,7 +47,7 @@ The **Chargeback Risk Engine** is a robust backend service that evaluates pre-au
 ## 📂 Project Structure
 
 ```text
-chargeback-risk-engine/
+.
 ├── api/proto/             # Protocol Buffer definitions & generated gRPC code
 ├── cmd/server/            # Application entrypoint
 ├── deploy/                # Dockerfile, docker-compose.yml, and Prometheus config
