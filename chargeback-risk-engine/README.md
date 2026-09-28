@@ -1,108 +1,152 @@
-# Chargeback Risk Engine
+# 🛡️ Chargeback Risk Engine
 
-High-performance real-time chargeback risk evaluation service written in Go, powered by an ONNX-exported XGBoost model and Redis velocity tracking.
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org/)
+[![Python Version](https://img.shields.io/badge/Python-3.14+-3776AB?style=flat&logo=python)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Supported-2496ED?style=flat&logo=docker)](https://www.docker.com/)
+[![ONNX Runtime](https://img.shields.io/badge/ONNX-Runtime-005CED?style=flat&logo=onnx)](https://onnxruntime.ai/)
+[![Redis](https://img.shields.io/badge/Redis-7.0+-DC382D?style=flat&logo=redis)](https://redis.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+> A high-performance, real-time transaction evaluation microservice designed to detect and prevent chargebacks before they happen.
 
-The service evaluates incoming pre-authorization transaction requests via gRPC and returns a risk score, decision (`APPROVE`, `REVIEW_3DS`, `DECLINE`), execution latency in microseconds, and applicable reason codes.
+The **Chargeback Risk Engine** is a robust backend service that evaluates pre-authorization transaction requests via gRPC in microseconds. By combining advanced Machine Learning (XGBoost via ONNX) with real-time streaming velocity metrics (Redis Lua scripts) and business rules, it delivers accurate risk decisions (`APPROVE`, `REVIEW_3DS`, `DECLINE`) along with predictive risk scores.
 
-### Key Components
+---
 
-- **gRPC API**: High-throughput transaction evaluation endpoint (`risk.v1.RiskService`).
-- **ONNX Inference Engine**: Native C-bindings (`onnxruntime_go`) executing pre-trained XGBoost model (`chargeback_model.onnx`).
-- **Real-Time Velocity Tracking**: Atomic sliding-window feature extraction in Redis using custom Lua script (`card_tx_cnt_5m`, `15m`, `60m`, `card_sum_cents_60m`).
-- **Feature Builder**: Dynamic feature mapping and normalization matching the offline ML pipeline.
-- **Rule Engine**: Combines model probabilities with rule-based thresholds and risk factors (CVV verification, 3D-Secure, velocity limits).
+## ✨ Key Features
 
-## Architecture & Data Flow
+- **⚡ Blazing Fast gRPC API**: Built for high throughput and ultra-low latency transaction evaluation.
+- **🧠 Native ML Inference**: Utilizes C-bindings for ONNX Runtime (`onnxruntime_go`) to execute a pre-trained XGBoost model (`chargeback_model.onnx`) directly in Go.
+- **🔄 Real-Time Velocity Tracking**: Leverages custom Redis Lua scripts for atomic, sliding-window feature extraction (e.g., transaction counts and amounts over 5m, 15m, 60m windows).
+- **🛡️ Hybrid Rule Engine**: Combines the ML probability score with hard business constraints (CVV mismatches, 3D-Secure state, velocity limits) to produce actionable decisions.
+- **📊 Observability Ready**: Easily integrates with Prometheus & Grafana (configured via Docker Compose).
 
-1. Client sends `RiskEvaluationRequest` to gRPC server.
-2. Velocity client executes Lua script against Redis to retrieve sliding window metrics.
-3. Feature enricher combines request metadata and velocity metrics into a 19-element float32 array.
-4. ONNX engine executes model inference and returns chargeback probability.
-5. Rule engine evaluates ML score alongside business rules to produce the final decision and reason codes.
+---
 
-## Requirements
+## 🏗️ Architecture & Data Flow
 
-- Go 1.22+
-- Docker & Docker Compose
-- ONNX Runtime C shared library (`libonnxruntime.so` on Linux or `onnxruntime.dll` on Windows)
-- Redis 7+
+1. **Ingest**: Client sends a `RiskEvaluationRequest` to the gRPC server.
+2. **Velocity Aggregation**: The velocity client runs a Lua script against Redis to retrieve sliding window metrics.
+3. **Feature Enrichment**: Combines request metadata and velocity metrics into a 19-element feature vector.
+4. **ML Inference**: The ONNX engine predicts the chargeback probability.
+5. **Decisioning**: The Rule Engine applies business logic thresholds over the ML score to output the final decision and reason codes.
 
-## Project Structure
+---
 
-```
+## 🛠️ Tech Stack
+
+- **Core Service:** Go 1.22+
+- **Machine Learning:** Python (XGBoost, scikit-learn), ONNX
+- **Inference Engine:** ONNX Runtime C Shared Library
+- **Data Store / Caching:** Redis 7+
+- **Communication:** gRPC / Protocol Buffers
+- **Infrastructure:** Docker & Docker Compose
+
+---
+
+## 📂 Project Structure
+
+```text
 chargeback-risk-engine/
-├── api/proto/             # Protocol Buffer definitions and generated gRPC code
+├── api/proto/             # Protocol Buffer definitions & generated gRPC code
 ├── cmd/server/            # Application entrypoint
 ├── deploy/                # Dockerfile, docker-compose.yml, and Prometheus config
 ├── internal/
 │   ├── config/            # Environment configuration loader
 │   ├── domain/            # Domain models and schema definitions
 │   ├── engine/            # ONNX Runtime integration wrapper
-│   ├── features/          # Feature extraction and Redis velocity client
+│   ├── features/          # Feature extraction & Redis velocity client
 │   ├── rules/             # Decision threshold engine
 │   └── service/           # gRPC service implementation
-├── ml/                    # Python training, feature script, and ONNX export
+├── ml/                    # Python training, feature extraction scripts, and ONNX export
 ├── model_artifacts/       # Trained ONNX model and feature schema JSON
-├── Makefile               # Task automation
-└── README.md
+└── Makefile               # Task automation (build, test, docker, etc.)
 ```
 
-## Quick Start
+---
 
-### Running with Docker Compose
+## 🚀 Getting Started
+
+### Prerequisites
+- Go 1.22 or higher
+- Python 3.14+ (for retraining models)
+- Docker & Docker Compose
+- ONNX Runtime C shared library
+
+### Quick Start (Docker)
 
 To spin up the service along with Redis and Prometheus:
 
 ```bash
 make docker-up
 ```
+*The gRPC server will start listening on port `50051`.*
 
-Or directly via docker compose:
+### Local Development Setup
 
-```bash
-docker compose -f deploy/docker-compose.yml up --build -d
-```
+1. **Set up the ONNX Runtime library:**
+   Ensure the ONNX Runtime library path is set.
+   ```bash
+   # Linux Example (if installed system-wide)
+   export ONNX_LIB_PATH=/usr/lib/libonnxruntime.so
+   
+   # Or using the local Python venv (if installed via pip in this project)
+   export ONNX_LIB_PATH=./libonnxruntime.so
+   ```
 
-The gRPC server will start listening on port `50051`.
+2. **Run Unit Tests:**
+   ```bash
+   make test
+   ```
 
-### Local Development
+3. **Build the Binary:**
+   ```bash
+   make build
+   ```
 
-1. Ensure ONNX Runtime library path is set:
-   - Linux: `export ONNX_LIB_PATH=/usr/lib/libonnxruntime.so`
-   - Windows: `set ONNX_LIB_PATH=C:\path\to\onnxruntime.dll`
+4. **Run the Server:**
+   ```bash
+   ./bin/chargeback-risk-engine
+   ```
 
-2. Run unit tests:
+---
 
-```bash
-make test
-```
+## ⚙️ Configuration
 
-3. Build the binary locally:
-
-```bash
-make build
-```
-
-4. Run the server:
-
-```bash
-./bin/chargeback-risk-engine
-```
-
-## Configuration
-
-The service can be configured using environment variables:
+The service is highly configurable via environment variables:
 
 | Variable | Default Value | Description |
 |---|---|---|
 | `SERVER_ADDR` | `:50051` | gRPC server bind address |
 | `REDIS_ADDR` | `localhost:6379` | Redis server address for velocity metrics |
-| `MODEL_PATH` | `model_artifacts/chargeback_model.onnx` | Path to ONNX model file |
-| `SCHEMA_PATH` | `model_artifacts/features_schema.json` | Path to feature schema definition |
+| `MODEL_PATH` | `model_artifacts/chargeback_model.onnx` | Path to the ONNX model file |
+| `SCHEMA_PATH` | `model_artifacts/features_schema.json` | Path to the feature schema definition |
 | `ONNX_LIB_PATH` | `/usr/lib/libonnxruntime.so` | Path to ONNX Runtime shared library |
 
-## License
+---
 
-MIT
+## 🧑‍💻 ML Pipeline (Python)
+
+The `ml/` directory contains everything needed to train the XGBoost model.
+To set up the Python environment and retrain:
+
+```bash
+# Create venv and activate
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r ml/requirements.txt
+
+# Run training
+python ml/train.py
+
+# Export to ONNX
+python ml/export_onnx.py
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
